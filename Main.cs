@@ -4,22 +4,17 @@ using System.Windows.Forms;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Runtime.Versioning;
+using Windows.Win32;
+using Windows.Win32.UI.Input.KeyboardAndMouse;
+using System.Diagnostics;
 
 
 namespace MouseJiggler
 {
-    [SupportedOSPlatform("windows")]
+    [SupportedOSPlatform("windows5.0")]
     public partial class Main : Form
     {
-        const uint MOUSEEVENTF_ABSOLUTE = 0x8000;
-        const uint MOUSEEVENTF_MOVE = 0x0001;
-        const int centerX = 1920 / 2, centerY = 1080 / 2, circleRadius = 50;
-
-        [LibraryImport("user32.dll", EntryPoint = "mouse_event")]
-        private static partial void MouseEvent(uint dwFlags, int dx, int dy, uint dwData, int dwExtraInfo);
-
-        [LibraryImport("user32.dll")]
-        private static partial short GetAsyncKeyState(int vKey);
+        const int circleRadius = 50;
 
         private static bool _shouldRun;
         private static Thread _worker;
@@ -54,21 +49,67 @@ namespace MouseJiggler
             dtpJiggleUntil.Value = DateTime.Today.AddDays(1);
         }
 
-        public static void MouseEventCircle(int center_x, int center_y, int radius)
+        public static void MouseEventCircle(int radius)
         {
-            int x, y;
+            var scrWidth = Screen.PrimaryScreen.Bounds.Width;
+            var scrHeight = Screen.PrimaryScreen.Bounds.Height;
 
-            MouseEvent(MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE, center_x * 65536 / 1920, center_y * 65536 / 1080, 0, 0);
+            int x = scrWidth / 2,
+                y = scrHeight / 2;
+
+            var ret = PInvoke.SendInput([
+                new INPUT
+                {
+                    type = INPUT_TYPE.INPUT_MOUSE,
+                    Anonymous = new INPUT._Anonymous_e__Union
+                    {
+                        mi = new MOUSEINPUT
+                        {
+                            dx = x,
+                            dy = y,
+                            dwFlags = MOUSE_EVENT_FLAGS.MOUSEEVENTF_ABSOLUTE | MOUSE_EVENT_FLAGS.MOUSEEVENTF_MOVE,
+                        }
+                    }
+                }
+            ], Marshal.SizeOf<INPUT>());
+
+            if (ret != 1)
+            {
+                var ecode = Marshal.GetLastWin32Error();
+                Trace.WriteLine($"SendInput failed. return = {ret}, errorcode = 0x{ecode:X8} ({Marshal.GetPInvokeErrorMessage(ecode)})");
+            }
 
             for (int i = 0; i < 720; i++)
             {
-                x = Convert.ToInt32((radius * Math.Sin(i * (Math.PI / 360.0))) + center_x);
-                y = Convert.ToInt32((radius * Math.Cos(i * (Math.PI / 360.0))) + center_y);
+                var (sin, cos) = Math.SinCos(i * (Math.PI / 360.0));
+                var targetX = (scrWidth / 2) + Convert.ToInt32(radius * sin);
+                var targetY = (scrHeight / 2) + Convert.ToInt32(radius * cos);
 
-                x = x * 65536 / 1920;
-                y = y * 65536 / 1080;
+                ret = PInvoke.SendInput([
+                    new INPUT
+                    {
+                        type = INPUT_TYPE.INPUT_MOUSE,
+                        Anonymous = new INPUT._Anonymous_e__Union
+                        {
+                            mi = new MOUSEINPUT
+                            {
+                                dx = targetX - x,
+                                dy = targetY - y,
+                                dwFlags = MOUSE_EVENT_FLAGS.MOUSEEVENTF_MOVE,
+                            }
+                        }
+                    }
+                ], Marshal.SizeOf<INPUT>());
 
-                MouseEvent(MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE, x, y, 0, 0);
+                if (ret != 1)
+                {
+                    var ecode = Marshal.GetLastWin32Error();
+                    Trace.WriteLine($"SendInput failed. return = {ret}, errorcode = 0x{ecode:X8} ({Marshal.GetPInvokeErrorMessage(ecode)})");
+                }
+
+                x = targetX;
+                y = targetY;
+
                 if (i % 20 == 0)
                 {
                     Thread.Sleep(1);
@@ -84,16 +125,16 @@ namespace MouseJiggler
             UNTIL
         }
 
-        public static void ThreadProc(JiggleType type, int center_X, int center_Y, object control)
+        public static void ThreadProc(JiggleType type, object control)
         {
             try
             {
                 if (type == JiggleType.CONSTANT)
                 {
                     control = (int)control;
-                    while (GetAsyncKeyState(0x1B) != 1 && Volatile.Read(ref _shouldRun))
+                    while (PInvoke.GetAsyncKeyState(0x1B) != 1 && Volatile.Read(ref _shouldRun))
                     {
-                        MouseEventCircle(center_X, center_Y, (int)control);
+                        MouseEventCircle((int)control);
                     }
                 }
                 else if (type == JiggleType.EVERYX)
@@ -121,19 +162,22 @@ namespace MouseJiggler
                         duration = duration * 24 * 60 * 60 * 1000;
                     }
 
-                    while (GetAsyncKeyState(0x1B) != 1 && Volatile.Read(ref _shouldRun))
+                    while (PInvoke.GetAsyncKeyState(0x1B) != 1 && Volatile.Read(ref _shouldRun))
                     {
-                        MouseEventCircle(center_X, center_Y, radius);
-                        Thread.Sleep(duration);
+                        MouseEventCircle(radius);
+
+                        var wake = DateTime.Now.AddMilliseconds(duration);
+                        while (PInvoke.GetAsyncKeyState(0x1B) != 1 && Volatile.Read(ref _shouldRun) && DateTime.Now < wake)
+                            Thread.Sleep(500);
                     }
                 }
                 else if (type == JiggleType.RANDOM)
                 {
                     int radius = (int)control;
-                    while (GetAsyncKeyState(0x1B) != 1 && Volatile.Read(ref _shouldRun))
+                    while (PInvoke.GetAsyncKeyState(0x1B) != 1 && Volatile.Read(ref _shouldRun))
                     {
                         var duration = Random.Shared.Next(60) * 1000;
-                        MouseEventCircle(center_X, center_Y, radius);
+                        MouseEventCircle(radius);
                         Thread.Sleep(duration);
                     }
                 }
@@ -148,9 +192,9 @@ namespace MouseJiggler
                     year = Convert.ToInt32(arr[2]);
                     var target = new DateTime(year, month, day);
 
-                    while (GetAsyncKeyState(0x1B) != 1 && target < DateTime.Now && Volatile.Read(ref _shouldRun))
+                    while (PInvoke.GetAsyncKeyState(0x1B) != 1 && target < DateTime.Now && Volatile.Read(ref _shouldRun))
                     {
-                        MouseEventCircle(center_X, center_Y, radius);
+                        MouseEventCircle(radius);
                     }
                 }
             }
@@ -158,6 +202,8 @@ namespace MouseJiggler
             {
                 MessageBox.Show(e.ToString());
             }
+
+            Volatile.Write(ref _shouldRun, false);
         }
 
         private void btnStart_Click(object sender, EventArgs e)
@@ -198,7 +244,7 @@ namespace MouseJiggler
                 }
 
                 Volatile.Write(ref _shouldRun, true);
-                _worker = new Thread(() => ThreadProc(curType, centerX, centerY, control));
+                _worker = new Thread(() => ThreadProc(curType, control));
                 _worker.Start();
             }
         }
