@@ -11,23 +11,15 @@ namespace MouseJiggler
     [SupportedOSPlatform("windows")]
     public partial class Main : Form
     {
-        static uint DOWN = 0x0002;
-        static uint UP = 0x0004;
-        static uint MOUSEEVENTF_ABSOLUTE = 0x8000;
-        static uint MOUSEEVENTF_MOVE = 0x0001;
-        [DllImport("user32.dll")]
-        static extern void mouse_event(uint dwFlags, int dx, int dy, uint dwData, int dwExtraInfo);
+        const uint MOUSEEVENTF_ABSOLUTE = 0x8000;
+        const uint MOUSEEVENTF_MOVE = 0x0001;
+        const int centerX = 1920 / 2, centerY = 1080 / 2, circleRadius = 50;
 
-        static int SM_CXSCREEN = 0;
-        static int SM_CYSCREEN = 1;
-        [DllImport("user32.dll")]
-        static extern int GetSystemMetrics(int nIndex);
+        [LibraryImport("user32.dll", EntryPoint = "mouse_event")]
+        private static partial void MouseEvent(uint dwFlags, int dx, int dy, uint dwData, int dwExtraInfo);
 
-        [DllImport("user32.dll")]
-        public static extern short GetAsyncKeyState(int vKey);
-
-        int centerX = 1920 / 2, centerY = 1080 / 2, circleRadius = 50;
-        static int origThreadCount = Process.GetCurrentProcess().Threads.Count;
+        [LibraryImport("user32.dll")]
+        private static partial short GetAsyncKeyState(int vKey);
 
         private List<String> SharedThreadData = new List<string>();
         private List<Thread> threadList = new List<Thread>();
@@ -35,9 +27,7 @@ namespace MouseJiggler
         public Main()
         {
             InitializeComponent();
-
         }
-        //https://coolors.co/edffec-61e786-5a5766-48435c-9792e3
 
         private void Main_Load(object sender, EventArgs e)
         {
@@ -69,17 +59,17 @@ namespace MouseJiggler
         {
             int x, y;
 
-            mouse_event(MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE, center_x * 65536 / 1920, center_y * 65536 / 1080, 0, 0);
+            MouseEvent(MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE, center_x * 65536 / 1920, center_y * 65536 / 1080, 0, 0);
 
             for (int i = 0; i < 720; i++)
             {
-                x = Convert.ToInt32((radius * (Math.Sin(i * (Math.PI / 360.0)))) + center_x);
-                y = Convert.ToInt32((radius * (Math.Cos(i * (Math.PI / 360.0)))) + center_y);
+                x = Convert.ToInt32((radius * Math.Sin(i * (Math.PI / 360.0))) + center_x);
+                y = Convert.ToInt32((radius * Math.Cos(i * (Math.PI / 360.0))) + center_y);
 
                 x = x * 65536 / 1920;
                 y = y * 65536 / 1080;
 
-                mouse_event(MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE, x, y, 0, 0);
+                MouseEvent(MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE, x, y, 0, 0);
                 if (i % 20 == 0)
                 {
                     Thread.Sleep(1);
@@ -89,30 +79,19 @@ namespace MouseJiggler
 
         public enum JiggleType
         {
-            CONSTANT, 
+            CONSTANT,
             EVERYX,
             RANDOM,
             UNTIL
         }
 
-        public static void ThreadProc(Object Type, Object CenterX, Object CenterY, Object Control, Object SharedData)
+        public static void ThreadProc(JiggleType type, int center_X, int center_Y, object control)
         {
-            JiggleType type;
-            int center_X, center_Y;
-            Object control;
-            List<String> sharedData;
             try
             {
-                type = (JiggleType)Type;
-                center_X = (int)CenterX;
-                center_Y = (int)CenterY;
-                control = Control;
-                sharedData = (List<String>)SharedData;
-                sharedData.Clear();
-                sharedData.Add(Thread.CurrentThread.IsAlive.ToString());
                 if (type == JiggleType.CONSTANT)
                 {
-                    control = (int)Control;
+                    control = (int)control;
                     while (GetAsyncKeyState(0x1B) != 1)
                     {
                         mouse_event_circle(center_X, center_Y, (int)control);
@@ -122,7 +101,7 @@ namespace MouseJiggler
                 } 
                 else if (type == JiggleType.EVERYX)
                 {
-                    List<String> arr = (List<string>)control;
+                    List<string> arr = (List<string>)control;
 
                     int duration = Convert.ToInt32(arr[0]);
                     string timeset = arr[1];
@@ -169,14 +148,14 @@ namespace MouseJiggler
                 }
                 else if (type == JiggleType.UNTIL)
                 {
-                    List<String> arr = (List<string>)control;
+                    List<string> arr = (List<string>)control;
 
                     int day, month, year;
                     int radius = Convert.ToInt32(arr[3]);
                     day = Convert.ToInt32(arr[0]);
                     month = Convert.ToInt32(arr[1]);
                     year = Convert.ToInt32(arr[2]);
-                    DateTime target = new DateTime(year, month, day);
+                    var target = new DateTime(year, month, day);
 
                     while (GetAsyncKeyState(0x1B) != 1)
                     {
@@ -185,21 +164,12 @@ namespace MouseJiggler
                             mouse_event_circle(center_X, center_Y, radius);
                         }
                     }
-                    sharedData.Clear();
-                    Thread.CurrentThread.Abort();
                 }
-            
             }
             catch (Exception e)
             {
-                type = JiggleType.CONSTANT;
-                center_X = 1920/2;
-                center_Y = 1080/2;
-                control = 20;
                 MessageBox.Show(e.ToString());
-                Thread.CurrentThread.Abort();
             }
-            Thread.CurrentThread.Abort();
         }
 
         private void btnStart_Click(object sender, EventArgs e)
@@ -207,7 +177,7 @@ namespace MouseJiggler
             btnStart.Enabled = false;
             btnCancel.Enabled = true;
             lblHowToCancel.Visible = true;
-            Object control = 0;
+            object control;
             if (chkJiggle.Checked)
             {
                 JiggleType curType = JiggleType.CONSTANT;
@@ -220,7 +190,7 @@ namespace MouseJiggler
                 else if (chkJiggleEveryX.Checked)
                 {
                     curType = JiggleType.EVERYX;
-                    control = new List<String> { mskEveryXMinutes.Text, cboJiggleEveryOptions.SelectedItem.ToString(), circleRadius.ToString() }; 
+                    control = new List<string> { mskEveryXMinutes.Text, cboJiggleEveryOptions.SelectedItem.ToString(), circleRadius.ToString() };
                 }
                 else if (chkJiggleRandom.Checked)
                 {
@@ -231,7 +201,7 @@ namespace MouseJiggler
                 {
                     curType = JiggleType.UNTIL;
                     DateTime date = dtpJiggleUntil.Value;
-                    control = new List<String> { date.Day.ToString(), date.Month.ToString(), date.Year.ToString(), circleRadius.ToString() };
+                    control = new List<string> { date.Day.ToString(), date.Month.ToString(), date.Year.ToString(), circleRadius.ToString() };
                 }
                 else
                 {
@@ -239,12 +209,12 @@ namespace MouseJiggler
                     control = circleRadius;
                 }
 
-                var jiggleThread = new Thread(() => ThreadProc(curType, centerX, centerY, control, SharedThreadData));
+                var jiggleThread = new Thread(() => ThreadProc(curType, centerX, centerY, control));
                 jiggleThread.Start();
                 threadList.Add(jiggleThread);
             }
         }
-        
+
         private void timer1_Tick(object sender, EventArgs e)
         {
             if (SharedThreadData.Count > 0)
