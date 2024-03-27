@@ -52,10 +52,9 @@ namespace MouseJiggler
 
             dtpJiggleUntil.Enabled = false;
             dtpJiggleUntil.Value = DateTime.Today.AddDays(1);
-
         }
 
-        public static void mouse_event_circle(int center_x, int center_y, int radius)
+        public static void MouseEventCircle(int center_x, int center_y, int radius)
         {
             int x, y;
 
@@ -94,7 +93,7 @@ namespace MouseJiggler
                     control = (int)control;
                     while (GetAsyncKeyState(0x1B) != 1 && Volatile.Read(ref _shouldRun))
                     {
-                        mouse_event_circle(center_X, center_Y, (int)control);
+                        MouseEventCircle(center_X, center_Y, (int)control);
                     }
                 }
                 else if (type == JiggleType.EVERYX)
@@ -124,19 +123,17 @@ namespace MouseJiggler
 
                     while (GetAsyncKeyState(0x1B) != 1 && Volatile.Read(ref _shouldRun))
                     {
-                        mouse_event_circle(center_X, center_Y, radius);
+                        MouseEventCircle(center_X, center_Y, radius);
                         Thread.Sleep(duration);
                     }
                 }
                 else if (type == JiggleType.RANDOM)
                 {
-                    Random random = new Random();
-                    int duration;
                     int radius = (int)control;
                     while (GetAsyncKeyState(0x1B) != 1 && Volatile.Read(ref _shouldRun))
                     {
-                        duration = random.Next(60) * 1000;
-                        mouse_event_circle(center_X, center_Y, radius);
+                        var duration = Random.Shared.Next(60) * 1000;
+                        MouseEventCircle(center_X, center_Y, radius);
                         Thread.Sleep(duration);
                     }
                 }
@@ -153,7 +150,7 @@ namespace MouseJiggler
 
                     while (GetAsyncKeyState(0x1B) != 1 && target < DateTime.Now && Volatile.Read(ref _shouldRun))
                     {
-                        mouse_event_circle(center_X, center_Y, radius);
+                        MouseEventCircle(center_X, center_Y, radius);
                     }
                 }
             }
@@ -260,7 +257,6 @@ namespace MouseJiggler
                 chkJiggleEveryX.Enabled = false;
                 chkJiggleRandom.Enabled = false;
                 chkJiggleUntil.Enabled = false;
-
             }
         }
 
@@ -278,7 +274,6 @@ namespace MouseJiggler
 
                 chkClickEvery.Enabled = false;
                 chkClickRandom.Enabled = false;
-
             }
         }
 
@@ -293,7 +288,6 @@ namespace MouseJiggler
                 chkJiggleEveryX.Enabled = false;
                 chkJiggleRandom.Enabled = false;
                 chkJiggleUntil.Enabled = false;
-
             }
             else
             {
@@ -341,7 +335,6 @@ namespace MouseJiggler
                 chkJiggleConstant.Enabled = false;
                 chkJiggleEveryX.Enabled = false;
                 chkJiggleUntil.Enabled = false;
-
             }
             else
             {
@@ -364,7 +357,6 @@ namespace MouseJiggler
                 chkJiggleRandom.Enabled = false;
 
                 dtpJiggleUntil.Enabled = true;
-
             }
             else
             {
@@ -386,7 +378,6 @@ namespace MouseJiggler
 
         private void mskEveryXMinutes_MaskInputRejected(object sender, MaskInputRejectedEventArgs e)
         {
-
         }
 
         private void chkClickEvery_CheckedChanged(object sender, EventArgs e)
