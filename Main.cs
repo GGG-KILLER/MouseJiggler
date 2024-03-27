@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
@@ -21,8 +21,8 @@ namespace MouseJiggler
         [LibraryImport("user32.dll")]
         private static partial short GetAsyncKeyState(int vKey);
 
-        private List<String> SharedThreadData = new List<string>();
-        private List<Thread> threadList = new List<Thread>();
+        private static bool _shouldRun;
+        private static Thread _worker;
 
         public Main()
         {
@@ -92,13 +92,11 @@ namespace MouseJiggler
                 if (type == JiggleType.CONSTANT)
                 {
                     control = (int)control;
-                    while (GetAsyncKeyState(0x1B) != 1)
+                    while (GetAsyncKeyState(0x1B) != 1 && Volatile.Read(ref _shouldRun))
                     {
                         mouse_event_circle(center_X, center_Y, (int)control);
                     }
-                    sharedData.Clear();
-                    Thread.CurrentThread.Abort();
-                } 
+                }
                 else if (type == JiggleType.EVERYX)
                 {
                     List<string> arr = (List<string>)control;
@@ -124,27 +122,23 @@ namespace MouseJiggler
                         duration = duration * 24 * 60 * 60 * 1000;
                     }
 
-                    while (GetAsyncKeyState(0x1B) != 1)
+                    while (GetAsyncKeyState(0x1B) != 1 && Volatile.Read(ref _shouldRun))
                     {
                         mouse_event_circle(center_X, center_Y, radius);
                         Thread.Sleep(duration);
                     }
-                    sharedData.Clear();
-                    Thread.CurrentThread.Abort();
                 }
                 else if (type == JiggleType.RANDOM)
                 {
                     Random random = new Random();
                     int duration;
                     int radius = (int)control;
-                    while (GetAsyncKeyState(0x1B) != 1)
+                    while (GetAsyncKeyState(0x1B) != 1 && Volatile.Read(ref _shouldRun))
                     {
                         duration = random.Next(60) * 1000;
                         mouse_event_circle(center_X, center_Y, radius);
                         Thread.Sleep(duration);
                     }
-                    sharedData.Clear();
-                    Thread.CurrentThread.Abort();
                 }
                 else if (type == JiggleType.UNTIL)
                 {
@@ -157,12 +151,9 @@ namespace MouseJiggler
                     year = Convert.ToInt32(arr[2]);
                     var target = new DateTime(year, month, day);
 
-                    while (GetAsyncKeyState(0x1B) != 1)
+                    while (GetAsyncKeyState(0x1B) != 1 && target < DateTime.Now && Volatile.Read(ref _shouldRun))
                     {
-                        if (DateTime.Today != target)
-                        {
-                            mouse_event_circle(center_X, center_Y, radius);
-                        }
+                        mouse_event_circle(center_X, center_Y, radius);
                     }
                 }
             }
@@ -209,28 +200,24 @@ namespace MouseJiggler
                     control = circleRadius;
                 }
 
-                var jiggleThread = new Thread(() => ThreadProc(curType, centerX, centerY, control));
-                jiggleThread.Start();
-                threadList.Add(jiggleThread);
+                Volatile.Write(ref _shouldRun, true);
+                _worker = new Thread(() => ThreadProc(curType, centerX, centerY, control));
+                _worker.Start();
             }
         }
 
         private void timer1_Tick(object sender, EventArgs e)
         {
-            if (SharedThreadData.Count > 0)
+            if (Volatile.Read(ref _shouldRun))
             {
-                if (SharedThreadData.ElementAt(0) == "True")
-                {
-                    btnStart.Enabled = false;
-                    btnCancel.Enabled = true;
-                }
+                btnStart.Enabled = false;
+                btnCancel.Enabled = true;
             }
             else
             {
                 btnStart.Enabled = true;
                 btnCancel.Enabled = false;
-                SharedThreadData.Clear();
-                threadList.Clear();
+                _worker = null;
                 lblHowToCancel.Visible = false;
             }
         }
@@ -242,11 +229,10 @@ namespace MouseJiggler
 
             lblHowToCancel.Visible = false;
 
-            SharedThreadData.Clear();
+            Volatile.Write(ref _shouldRun, false);
             try
             {
-                threadList.ElementAt(0).Abort();
-                threadList.Clear();
+                _worker.Join(TimeSpan.FromSeconds(10));
             }
             catch (Exception o)
             {
@@ -274,7 +260,7 @@ namespace MouseJiggler
                 chkJiggleEveryX.Enabled = false;
                 chkJiggleRandom.Enabled = false;
                 chkJiggleUntil.Enabled = false;
-                
+
             }
         }
 
@@ -292,7 +278,7 @@ namespace MouseJiggler
 
                 chkClickEvery.Enabled = false;
                 chkClickRandom.Enabled = false;
-                
+
             }
         }
 
@@ -307,7 +293,7 @@ namespace MouseJiggler
                 chkJiggleEveryX.Enabled = false;
                 chkJiggleRandom.Enabled = false;
                 chkJiggleUntil.Enabled = false;
-                
+
             }
             else
             {
