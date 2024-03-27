@@ -297,7 +297,7 @@ namespace MouseJiggler
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(239)))), ((int)(((byte)(239)))), ((int)(((byte)(245)))));
-            this.ClientSize = new System.Drawing.Size(293, 361);
+            this.ClientSize = new System.Drawing.Size(293, 463);
             this.Controls.Add(this.lblHowToCancel);
             this.Controls.Add(this.dtpJiggleUntil);
             this.Controls.Add(this.cboJiggleEveryOptions);
