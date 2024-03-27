@@ -78,5 +78,21 @@ namespace Windows.Win32
 		[DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
 		[SupportedOSPlatform("windows5.0")]
 		internal static extern unsafe uint SendInput(uint cInputs, winmdroot.UI.Input.KeyboardAndMouse.INPUT* pInputs, int cbSize);
+
+		/// <summary>Retrieves the specified system metric or system configuration setting.</summary>
+		/// <param name="nIndex">Type: <b>int</b></param>
+		/// <returns>
+		/// <para>Type: <b>int</b> If the function succeeds, the return value is the requested system metric or configuration setting. If the function fails, the return value is 0. <a href="https://docs.microsoft.com/windows/desktop/api/errhandlingapi/nf-errhandlingapi-getlasterror">GetLastError</a> does not provide extended error information.</para>
+		/// </returns>
+		/// <remarks>
+		/// <para>System metrics can vary from display to display. <b>GetSystemMetrics</b>(SM_CMONITORS) counts only visible display monitors. This is different from <a href="https://docs.microsoft.com/windows/desktop/api/winuser/nf-winuser-enumdisplaymonitors">EnumDisplayMonitors</a>, which enumerates both visible display monitors and invisible  pseudo-monitors that are associated with mirroring drivers. An invisible pseudo-monitor is associated with a pseudo-device used to mirror application drawing for remoting or other purposes. The SM_ARRANGE setting specifies how the system arranges minimized windows, and consists of a starting position and a direction. The starting position can be one of the following values.</para>
+		/// <para></para>
+		/// <para>This doc was truncated.</para>
+		/// <para><see href="https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-getsystemmetrics#">Read more on docs.microsoft.com</see>.</para>
+		/// </remarks>
+		[DllImport("USER32.dll", ExactSpelling = true, SetLastError = true)]
+		[DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+		[SupportedOSPlatform("windows5.0")]
+		internal static extern int GetSystemMetrics(winmdroot.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX nIndex);
 	}
 }
