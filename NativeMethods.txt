@@ -5,4 +5,6 @@ GetModuleHandle
 SetWindowsHookEx
 CallNextHookEx
 WM_KEYDOWN
+WM_KEYUP
 VIRTUAL_KEY
+KBDLLHOOKSTRUCT

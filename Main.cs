@@ -7,6 +7,7 @@ using Windows.Win32;
 using Windows.Win32.UI.Input.KeyboardAndMouse;
 using Windows.Win32.UI.WindowsAndMessaging;
 using Windows.Win32.Foundation;
+using System.Runtime.InteropServices;
 
 namespace MouseJiggler
 {
@@ -27,7 +28,8 @@ namespace MouseJiggler
 
         private LRESULT KeyboardHookHandler(int code, WPARAM wParam, LPARAM lParam)
         {
-            if (code >= 0 && wParam.Value == PInvoke.WM_KEYDOWN && lParam.Value == (ushort)VIRTUAL_KEY.VK_ESCAPE)
+            var data = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam.Value);
+            if (code >= 0 && wParam.Value is PInvoke.WM_KEYDOWN or PInvoke.WM_KEYUP && data.vkCode == (ushort)VIRTUAL_KEY.VK_ESCAPE)
             {
                 Interlocked.Exchange(ref _shouldRun, 0);
             }

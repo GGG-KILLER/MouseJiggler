@@ -26,5 +26,13 @@ namespace Windows.Win32
 		/// <para><see href="https://learn.microsoft.com/windows/win32/inputdev/wm-keydown#">Read more on docs.microsoft.com</see>.</para>
 		/// </remarks>
 		internal const uint WM_KEYDOWN = 256U;
+
+		/// <summary>Posted to the window with the keyboard focus when a nonsystem key is released. A nonsystem key is a key that is pressed when the ALT key is not pressed, or a keyboard key that is pressed when a window has the keyboard focus.</summary>
+		/// <returns>An application should return zero if it processes this message.</returns>
+		/// <remarks>
+		/// <para>The [**DefWindowProc**](/windows/desktop/api/winuser/nf-winuser-defwindowproca) function sends a [**WM\_SYSCOMMAND**](/windows/desktop/menurc/wm-syscommand) message to the top-level window if the F10 key or the ALT key was released. The *wParam* parameter of the message is set to SC\_KEYMENU. For enhanced 101- and 102-key keyboards, extended keys are the right ALT and CTRL keys on the main section of the keyboard; the INS, DEL, HOME, END, PAGE UP, PAGE DOWN, and arrow keys in the clusters to the left of the numeric keypad; and the divide (/) and ENTER keys in the numeric keypad. Other keyboards may support the extended-key bit in the *lParam* parameter. Applications must pass *wParam* to [**TranslateMessage**](/windows/desktop/api/winuser/nf-winuser-translatemessage) without altering it at all.</para>
+		/// <para><see href="https://learn.microsoft.com/windows/win32/inputdev/wm-keyup#">Read more on docs.microsoft.com</see>.</para>
+		/// </remarks>
+		internal const uint WM_KEYUP = 257U;
 	}
 }
