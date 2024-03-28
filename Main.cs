@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
 using System.Threading;
@@ -14,7 +14,7 @@ namespace MouseJiggler
     {
         const int circleRadius = 50;
 
-        private static bool _shouldRun;
+        private static int _shouldRun = 0;
         private static Thread _worker;
 
         public Main()
@@ -49,8 +49,8 @@ namespace MouseJiggler
 
         public static void MouseEventCircle(int radius)
         {
-            var scrWidth = Screen.PrimaryScreen.Bounds.Width;
-            var scrHeight = Screen.PrimaryScreen.Bounds.Height;
+            var scrWidth = PInvoke.GetSystemMetrics(SYSTEM_METRICS_INDEX.SM_CXSCREEN);
+            var scrHeight = PInvoke.GetSystemMetrics(SYSTEM_METRICS_INDEX.SM_CYSCREEN);
 
             int x = scrWidth / 2, y = scrHeight / 2;
             Helpers.MoveMouseTo(x, y, true);
@@ -88,7 +88,7 @@ namespace MouseJiggler
                 if (type == JiggleType.CONSTANT)
                 {
                     control = (int)control;
-                    while (PInvoke.GetAsyncKeyState((int)VIRTUAL_KEY.VK_ESCAPE) != 1 && Volatile.Read(ref _shouldRun))
+                    while (Volatile.Read(ref _shouldRun) == 1)
                     {
                         MouseEventCircle((int)control);
                     }
@@ -118,19 +118,19 @@ namespace MouseJiggler
                         duration = duration * 24 * 60 * 60 * 1000;
                     }
 
-                    while (PInvoke.GetAsyncKeyState((int)VIRTUAL_KEY.VK_ESCAPE) != 1 && Volatile.Read(ref _shouldRun))
+                    while (Volatile.Read(ref _shouldRun) == 1)
                     {
                         MouseEventCircle(radius);
 
                         var wake = DateTime.Now.AddMilliseconds(duration);
-                        while (PInvoke.GetAsyncKeyState((int)VIRTUAL_KEY.VK_ESCAPE) != 1 && Volatile.Read(ref _shouldRun) && DateTime.Now < wake)
+                        while (Volatile.Read(ref _shouldRun) == 1 && DateTime.Now < wake)
                             Thread.Sleep(500);
                     }
                 }
                 else if (type == JiggleType.RANDOM)
                 {
                     int radius = (int)control;
-                    while (PInvoke.GetAsyncKeyState((int)VIRTUAL_KEY.VK_ESCAPE) != 1 && Volatile.Read(ref _shouldRun))
+                    while (Volatile.Read(ref _shouldRun) == 1)
                     {
                         var duration = Random.Shared.Next(60) * 1000;
                         MouseEventCircle(radius);
@@ -148,7 +148,7 @@ namespace MouseJiggler
                     year = Convert.ToInt32(arr[2]);
                     var target = new DateTime(year, month, day);
 
-                    while (PInvoke.GetAsyncKeyState((int)VIRTUAL_KEY.VK_ESCAPE) != 1 && target < DateTime.Now && Volatile.Read(ref _shouldRun))
+                    while (target < DateTime.Now && Volatile.Read(ref _shouldRun) == 1)
                     {
                         MouseEventCircle(radius);
                     }
@@ -159,11 +159,14 @@ namespace MouseJiggler
                 MessageBox.Show(e.ToString());
             }
 
-            Volatile.Write(ref _shouldRun, false);
+            Volatile.Write(ref _shouldRun, 0);
         }
 
         private void btnStart_Click(object sender, EventArgs e)
         {
+            if (Interlocked.CompareExchange(ref _shouldRun, 1, 0) != 0)
+                return;
+
             btnStart.Enabled = false;
             btnCancel.Enabled = true;
             lblHowToCancel.Visible = true;
@@ -199,7 +202,7 @@ namespace MouseJiggler
                     control = circleRadius;
                 }
 
-                Volatile.Write(ref _shouldRun, true);
+                Interlocked.Exchange(ref _shouldRun, 1);
                 _worker = new Thread(() => ThreadProc(curType, control));
                 _worker.Start();
             }
@@ -207,7 +210,7 @@ namespace MouseJiggler
 
         private void timer1_Tick(object sender, EventArgs e)
         {
-            if (Volatile.Read(ref _shouldRun))
+            if (Volatile.Read(ref _shouldRun) == 1)
             {
                 btnStart.Enabled = false;
                 btnCancel.Enabled = true;
@@ -216,26 +219,28 @@ namespace MouseJiggler
             {
                 btnStart.Enabled = true;
                 btnCancel.Enabled = false;
-                _worker = null;
                 lblHowToCancel.Visible = false;
             }
         }
 
         private void btnCancel_Click(object sender, EventArgs e)
         {
-            btnStart.Enabled = true;
-            btnCancel.Enabled = false;
-
-            lblHowToCancel.Visible = false;
-
-            Volatile.Write(ref _shouldRun, false);
-            try
+            if (Interlocked.CompareExchange(ref _shouldRun, 0, 1) == 1)
             {
-                _worker.Join(TimeSpan.FromSeconds(10));
-            }
-            catch (Exception o)
-            {
-                MessageBox.Show(o.ToString());
+                btnStart.Enabled = true;
+                btnCancel.Enabled = false;
+
+                lblHowToCancel.Visible = false;
+
+                try
+                {
+                    _worker.Join(TimeSpan.FromSeconds(10));
+                }
+                catch (Exception o)
+                {
+                    MessageBox.Show(o.ToString());
+                }
+                _worker = null;
             }
         }
 
