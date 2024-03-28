@@ -4,6 +4,8 @@ using Windows.Win32.UI.WindowsAndMessaging;
 using Windows.Win32.UI.Input.KeyboardAndMouse;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
+using System.Windows.Forms;
+using System;
 
 namespace MouseJiggler;
 
@@ -49,5 +51,56 @@ internal static class Helpers
             return false;
         }
         return true;
+    }
+
+    [SupportedOSPlatform("windows5.1.2600")]
+    public static KeyboardHookHandle SetKeyboardHook(HOOKPROC handler)
+    {
+        using var currentProcess = Process.GetCurrentProcess();
+        using var currentModule = currentProcess.MainModule;
+        var moduleHandle = PInvoke.GetModuleHandle(currentModule.ModuleName);
+        var hookHandle = PInvoke.SetWindowsHookEx(WINDOWS_HOOK_ID.WH_KEYBOARD_LL, handler, moduleHandle, 0);
+        return new KeyboardHookHandle(hookHandle, moduleHandle);
+    }
+}
+
+internal sealed class KeyboardHookHandle(UnhookWindowsHookExSafeHandle hookHandle, FreeLibrarySafeHandle libraryHandle) : IDisposable
+{
+    private bool disposedValue;
+
+    public UnhookWindowsHookExSafeHandle HookHandle => hookHandle;
+
+    private void Dispose(bool disposing)
+    {
+        if (!disposedValue)
+        {
+            if (disposing)
+            {
+                HookHandle.Dispose();
+                libraryHandle.Dispose();
+            }
+
+            // TODO: free unmanaged resources (unmanaged objects) and override finalizer
+            // TODO: set large fields to null
+            disposedValue = true;
+        }
+    }
+
+    public void Dispose()
+    {
+        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
+}
+
+public class BindingFunctions
+{
+    [DllImport("user32.dll")]
+    static extern short GetKeyState(int nVirtKey);
+
+    public static bool IsKeyDown(Keys keys)
+    {
+        return (GetKeyState((int)keys) & 0x8000) == 0x8000;
     }
 }

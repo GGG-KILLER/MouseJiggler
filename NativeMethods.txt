@@ -1,3 +1,8 @@
 GetAsyncKeyState
 SendInput
 GetSystemMetrics
+GetModuleHandle
+SetWindowsHookEx
+CallNextHookEx
+WM_KEYDOWN
+VIRTUAL_KEY

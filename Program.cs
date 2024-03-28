@@ -4,7 +4,7 @@ using System.Windows.Forms;
 
 namespace MouseJiggler
 {
-    [SupportedOSPlatform("windows5.0")]
+    [SupportedOSPlatform("windows10.0")]
     static class Program
     {
         /// <summary>

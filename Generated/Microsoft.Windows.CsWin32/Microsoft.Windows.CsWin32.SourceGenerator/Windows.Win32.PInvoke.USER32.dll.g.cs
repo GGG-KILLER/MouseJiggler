@@ -94,5 +94,129 @@ namespace Windows.Win32
 		[DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
 		[SupportedOSPlatform("windows5.0")]
 		internal static extern int GetSystemMetrics(winmdroot.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX nIndex);
+
+		/// <summary>Removes a hook procedure installed in a hook chain by the SetWindowsHookEx function.</summary>
+		/// <param name="hhk">
+		/// <para>Type: <b>HHOOK</b> A handle to the hook to be removed. This parameter is a hook handle obtained by a previous call to <a href="https://docs.microsoft.com/windows/desktop/api/winuser/nf-winuser-setwindowshookexa">SetWindowsHookEx</a>.</para>
+		/// <para><see href="https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-unhookwindowshookex#parameters">Read more on docs.microsoft.com</see>.</para>
+		/// </param>
+		/// <returns>
+		/// <para>Type: <b>BOOL</b> If the function succeeds, the return value is nonzero. If the function fails, the return value is zero. To get extended error information, call <a href="https://docs.microsoft.com/windows/desktop/api/errhandlingapi/nf-errhandlingapi-getlasterror">GetLastError</a>.</para>
+		/// </returns>
+		/// <remarks>The hook procedure can be in the state of being called by another thread even after <b>UnhookWindowsHookEx</b> returns. If the hook procedure is not being called concurrently, the hook procedure is removed immediately before <b>UnhookWindowsHookEx</b> returns.</remarks>
+		[DllImport("USER32.dll", ExactSpelling = true, SetLastError = true)]
+		[DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+		[SupportedOSPlatform("windows5.0")]
+		internal static extern winmdroot.Foundation.BOOL UnhookWindowsHookEx(winmdroot.UI.WindowsAndMessaging.HHOOK hhk);
+
+		/// <inheritdoc cref="SetWindowsHookEx(winmdroot.UI.WindowsAndMessaging.WINDOWS_HOOK_ID, winmdroot.UI.WindowsAndMessaging.HOOKPROC, winmdroot.Foundation.HINSTANCE, uint)"/>
+		[SupportedOSPlatform("windows5.0")]
+		internal static unsafe UnhookWindowsHookExSafeHandle SetWindowsHookEx(winmdroot.UI.WindowsAndMessaging.WINDOWS_HOOK_ID idHook, winmdroot.UI.WindowsAndMessaging.HOOKPROC lpfn, SafeHandle hmod, uint dwThreadId)
+		{
+			bool hmodAddRef = false;
+			try
+			{
+				winmdroot.Foundation.HINSTANCE hmodLocal;
+				if (hmod is object)
+				{
+					hmod.DangerousAddRef(ref hmodAddRef);
+					hmodLocal = (winmdroot.Foundation.HINSTANCE)hmod.DangerousGetHandle();
+				}
+				else
+					hmodLocal = (winmdroot.Foundation.HINSTANCE )new IntPtr(0L);
+				winmdroot.UI.WindowsAndMessaging.HHOOK __result = PInvoke.SetWindowsHookEx(idHook, lpfn, hmodLocal, dwThreadId);
+				return new UnhookWindowsHookExSafeHandle(__result, ownsHandle: true);
+			}
+			finally
+			{
+				if (hmodAddRef)
+					hmod.DangerousRelease();
+			}
+		}
+
+		/// <summary>Installs an application-defined hook procedure into a hook chain. (Unicode)</summary>
+		/// <param name="idHook">Type: <b>int</b></param>
+		/// <param name="lpfn">
+		/// <para>Type: <b>HOOKPROC</b> A pointer to the hook procedure. If the <i>dwThreadId</i> parameter is zero or specifies the identifier of a thread created by a different process, the <i>lpfn</i> parameter must point to a hook procedure in a DLL. Otherwise, <i>lpfn</i> can point to a hook procedure in the code associated with the current process.</para>
+		/// <para><see href="https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-setwindowshookexw#parameters">Read more on docs.microsoft.com</see>.</para>
+		/// </param>
+		/// <param name="hmod">
+		/// <para>Type: <b>HINSTANCE</b> A handle to the DLL containing the hook procedure pointed to by the <i>lpfn</i> parameter. The <i>hMod</i> parameter must be set to <b>NULL</b> if the <i>dwThreadId</i> parameter specifies a thread created by the current process and if the hook procedure is within the code associated with the current process.</para>
+		/// <para><see href="https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-setwindowshookexw#parameters">Read more on docs.microsoft.com</see>.</para>
+		/// </param>
+		/// <param name="dwThreadId">
+		/// <para>Type: <b>DWORD</b> The identifier of the thread with which the hook procedure is to be associated. For desktop apps, if this parameter is zero, the hook procedure is associated with all existing threads running in the same desktop as the calling thread. For Windows Store apps, see the Remarks section.</para>
+		/// <para><see href="https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-setwindowshookexw#parameters">Read more on docs.microsoft.com</see>.</para>
+		/// </param>
+		/// <returns>
+		/// <para>Type: <b>HHOOK</b> If the function succeeds, the return value is the handle to the hook procedure. If the function fails, the return value is <b>NULL</b>. To get extended error information, call <a href="https://docs.microsoft.com/windows/desktop/api/errhandlingapi/nf-errhandlingapi-getlasterror">GetLastError</a>.</para>
+		/// </returns>
+		/// <remarks>
+		/// <para><b>SetWindowsHookEx</b> can be used to inject a DLL into another process. A 32-bit DLL cannot be injected into a 64-bit process, and a 64-bit DLL cannot be injected into a 32-bit process. If an application requires the use of hooks in other processes, it is required that a 32-bit application call <b>SetWindowsHookEx</b> to inject a 32-bit DLL into 32-bit processes, and a 64-bit application call <b>SetWindowsHookEx</b> to inject a 64-bit DLL into 64-bit processes. The 32-bit and 64-bit DLLs must have different names.</para>
+		/// <para>Because hooks run in the context of an application, they must match the "bitness" of the application. If a 32-bit application installs a global hook on 64-bit Windows, the 32-bit hook is injected into each 32-bit process (the usual security boundaries apply). In a 64-bit process, the threads are still marked as "hooked." However, because a 32-bit application must run the hook code, the system executes the hook in the hooking app's context; specifically, on the thread that called <b>SetWindowsHookEx</b>. This means that the hooking application must continue to pump messages or it might block the normal functioning of the 64-bit processes.</para>
+		/// <para>If a 64-bit application installs a global hook on 64-bit Windows, the 64-bit hook is injected into each 64-bit process, while all 32-bit processes use a callback to the hooking application.</para>
+		/// <para>To hook all applications on the desktop of a 64-bit Windows installation, install a 32-bit global hook and a 64-bit global hook, each from appropriate processes, and be sure to keep pumping messages in the hooking application to avoid blocking normal functioning. If you already have a 32-bit global hooking application and it doesn't need to run in each application's context, you may not need to create a 64-bit version.</para>
+		/// <para>An error may occur if the <i>hMod</i> parameter is <b>NULL</b> and the <i>dwThreadId</i> parameter is zero or specifies the identifier of a thread created by another process. Calling the <a href="https://docs.microsoft.com/windows/desktop/api/winuser/nf-winuser-callnexthookex">CallNextHookEx</a> function to chain to the next hook procedure is optional, but it is highly recommended; otherwise, other applications that have installed hooks will not receive hook notifications and may behave incorrectly as a result. You should call <b>CallNextHookEx</b> unless you absolutely need to prevent the notification from being seen by other applications. Before terminating, an application must call the <a href="https://docs.microsoft.com/windows/desktop/api/winuser/nf-winuser-unhookwindowshookex">UnhookWindowsHookEx</a> function to free system resources associated with the hook. The scope of a hook depends on the hook type. Some hooks can be set only with global scope; others can also be set for only a specific thread, as shown in the following table. </para>
+		/// <para>This doc was truncated.</para>
+		/// <para><see href="https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-setwindowshookexw#">Read more on docs.microsoft.com</see>.</para>
+		/// </remarks>
+		[DllImport("USER32.dll", ExactSpelling = true, EntryPoint = "SetWindowsHookExW", SetLastError = true)]
+		[DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+		[SupportedOSPlatform("windows5.0")]
+		internal static extern winmdroot.UI.WindowsAndMessaging.HHOOK SetWindowsHookEx(winmdroot.UI.WindowsAndMessaging.WINDOWS_HOOK_ID idHook, winmdroot.UI.WindowsAndMessaging.HOOKPROC lpfn, winmdroot.Foundation.HINSTANCE hmod, uint dwThreadId);
+
+		/// <inheritdoc cref="CallNextHookEx(winmdroot.UI.WindowsAndMessaging.HHOOK, int, winmdroot.Foundation.WPARAM, winmdroot.Foundation.LPARAM)"/>
+		[SupportedOSPlatform("windows5.0")]
+		internal static unsafe winmdroot.Foundation.LRESULT CallNextHookEx(SafeHandle hhk, int nCode, winmdroot.Foundation.WPARAM wParam, winmdroot.Foundation.LPARAM lParam)
+		{
+			bool hhkAddRef = false;
+			try
+			{
+				winmdroot.UI.WindowsAndMessaging.HHOOK hhkLocal;
+				if (hhk is object)
+				{
+					hhk.DangerousAddRef(ref hhkAddRef);
+					hhkLocal = (winmdroot.UI.WindowsAndMessaging.HHOOK)hhk.DangerousGetHandle();
+				}
+				else
+					hhkLocal = (winmdroot.UI.WindowsAndMessaging.HHOOK )new IntPtr(0L);
+				winmdroot.Foundation.LRESULT __result = PInvoke.CallNextHookEx(hhkLocal, nCode, wParam, lParam);
+				return __result;
+			}
+			finally
+			{
+				if (hhkAddRef)
+					hhk.DangerousRelease();
+			}
+		}
+
+		/// <summary>Passes the hook information to the next hook procedure in the current hook chain. A hook procedure can call this function either before or after processing the hook information.</summary>
+		/// <param name="hhk">
+		/// <para>Type: <b>HHOOK</b> This parameter is ignored.</para>
+		/// <para><see href="https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-callnexthookex#parameters">Read more on docs.microsoft.com</see>.</para>
+		/// </param>
+		/// <param name="nCode">
+		/// <para>Type: <b>int</b> The hook code passed to the current hook procedure. The next hook procedure uses this code to determine how to process the hook information.</para>
+		/// <para><see href="https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-callnexthookex#parameters">Read more on docs.microsoft.com</see>.</para>
+		/// </param>
+		/// <param name="wParam">
+		/// <para>Type: <b>WPARAM</b> The <i>wParam</i> value passed to the current hook procedure. The meaning of this parameter depends on the type of hook associated with the current hook chain.</para>
+		/// <para><see href="https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-callnexthookex#parameters">Read more on docs.microsoft.com</see>.</para>
+		/// </param>
+		/// <param name="lParam">
+		/// <para>Type: <b>LPARAM</b> The <i>lParam</i> value passed to the current hook procedure. The meaning of this parameter depends on the type of hook associated with the current hook chain.</para>
+		/// <para><see href="https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-callnexthookex#parameters">Read more on docs.microsoft.com</see>.</para>
+		/// </param>
+		/// <returns>
+		/// <para>Type: <b>LRESULT</b> This value is returned by the next hook procedure in the chain. The current hook procedure must also return this value. The meaning of the return value depends on the hook type. For more information, see the descriptions of the individual hook procedures.</para>
+		/// </returns>
+		/// <remarks>
+		/// <para>Hook procedures are installed in chains for particular hook types. <b>CallNextHookEx</b> calls the next hook in the chain. Calling <b>CallNextHookEx</b> is optional, but it is highly recommended; otherwise, other applications that have installed hooks will not receive hook notifications and may behave incorrectly as a result. You should call <b>CallNextHookEx</b> unless you absolutely need to prevent the notification from being seen by other applications.</para>
+		/// <para><see href="https://learn.microsoft.com/windows/win32/api/winuser/nf-winuser-callnexthookex#">Read more on docs.microsoft.com</see>.</para>
+		/// </remarks>
+		[DllImport("USER32.dll", ExactSpelling = true)]
+		[DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
+		[SupportedOSPlatform("windows5.0")]
+		internal static extern winmdroot.Foundation.LRESULT CallNextHookEx(winmdroot.UI.WindowsAndMessaging.HHOOK hhk, int nCode, winmdroot.Foundation.WPARAM wParam, winmdroot.Foundation.LPARAM lParam);
 	}
 }

@@ -1,25 +1,37 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
 using System.Threading;
 using System.Runtime.Versioning;
 using Windows.Win32;
 using Windows.Win32.UI.Input.KeyboardAndMouse;
-
+using Windows.Win32.UI.WindowsAndMessaging;
+using Windows.Win32.Foundation;
 
 namespace MouseJiggler
 {
-    [SupportedOSPlatform("windows5.0")]
+    [SupportedOSPlatform("windows10.0")]
     public partial class Main : Form
     {
         const int circleRadius = 50;
 
         private static int _shouldRun = 0;
         private static Thread _worker;
+        private static KeyboardHookHandle _escapeHook;
 
         public Main()
         {
             InitializeComponent();
+            _escapeHook = Helpers.SetKeyboardHook(KeyboardHookHandler);
+        }
+
+        private LRESULT KeyboardHookHandler(int code, WPARAM wParam, LPARAM lParam)
+        {
+            if (code >= 0 && wParam.Value == PInvoke.WM_KEYDOWN && lParam.Value == (ushort)VIRTUAL_KEY.VK_ESCAPE)
+            {
+                Interlocked.Exchange(ref _shouldRun, 0);
+            }
+            return PInvoke.CallNextHookEx(_escapeHook.HookHandle, code, wParam, lParam);
         }
 
         private void Main_Load(object sender, EventArgs e)
